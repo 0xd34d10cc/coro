@@ -1,6 +1,8 @@
 #include "coro.h"
 
-__attribute__((naked)) static void trampoline(void) {
+#define NAKED __attribute__((naked))
+
+NAKED static void trampoline(void) {
   asm volatile(
     "popq %rdi;"
     "popq %rsi;"
@@ -27,7 +29,7 @@ void coro_init(Coro* coro, char* stack, int stack_size, CoroFn fn, void* arg) {
   coro->flag = 0;
 }
 
-__attribute__((naked)) void coro_swap(Coro* current, Coro* next) {
+NAKED void coro_swap(Coro* current, Coro* next) {
   asm volatile(
     // save current context
     // NOTE: there is no need to save volatile registers because
