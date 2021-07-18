@@ -27,48 +27,35 @@ void coro_init(Coro* coro, char* stack, int stack_size, CoroFn fn, void* arg) {
   coro->flag = 0;
 }
 
-void coro_swap(Coro* current, Coro* next) {
-  void* restore = &&end;
-  // save current context
-  // NOTE: there is no need to save volatile registers because
-  //       caller of this function (coro_swap) already assumes
-  //       that their values are invalid after the call
+__attribute__((naked)) void coro_swap(Coro* current, Coro* next) {
   asm volatile(
-    "movq %%rbx, 0(%0);"
-    "movq %%rbp, 8(%0);"
-    "movq %%rsp, 16(%0);"
-    "movq %%r12, 24(%0);"
-    "movq %%r13, 32(%0);"
-    "movq %%r14, 40(%0);"
-    "movq %%r15, 48(%0);"
-    "movq %1, 56(%0);"
+    // save current context
+    // NOTE: there is no need to save volatile registers because
+    //       caller of this function (coro_swap) already assumes
+    //       that their values are invalid after the call
+    "movq %rbx, 0(%rdi);"
+    "movq %rbp, 8(%rdi);"
+    "movq %rsp, 16(%rdi);"
+    "movq %r12, 24(%rdi);"
+    "movq %r13, 32(%rdi);"
+    "movq %r14, 40(%rdi);"
+    "movq %r15, 48(%rdi);"
+    "leaq finish(%rip), %rax;"
+    "movq %rax, 56(%rdi);"
     "pushf;"
-    "popq 64(%0);"
-    :
-    : "r" (current), "r" (restore)
-    : "rax"
-  );
-
-
-  // load new context
-  asm volatile(
-    "movq 0(%0),  %%rbx;"
-    "movq 8(%0),  %%rbp;"
-    "movq 16(%0), %%rsp;"
-    "movq 24(%0), %%r12;"
-    "movq 32(%0), %%r13;"
-    "movq 40(%0), %%r14;"
-    "movq 48(%0), %%r15;"
-    "push 64(%0);"
+    "popq 64(%rdi);"
+    // load new context
+    "movq 0(%rsi),  %rbx;"
+    "movq 8(%rsi),  %rbp;"
+    "movq 16(%rsi), %rsp;"
+    "movq 24(%rsi), %r12;"
+    "movq 32(%rsi), %r13;"
+    "movq 40(%rsi), %r14;"
+    "movq 48(%rsi), %r15;"
+    "push 64(%rsi);"
     "popfq;"
-    "jmp *56(%0);"
-    :
-    : "r" (next)
+    "jmp *56(%rsi);"
+    "finish:"
+    "ret"
   );
-
-  end:
-  // this is a hack to prevent label address from going outside of function 
-  // TODO: make this function naked to avoid this problem
-  asm volatile("nop");
-  return;
 }
