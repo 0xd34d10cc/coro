@@ -61,12 +61,16 @@ static Coro main_ctx;
 static void schedule(Coro* swap) {
   Task* task = pop_task(&tasks);
   if (!task) {
-    Coro waste;
-    coro_swap(&waste, &main_ctx);
+    coro_switch(&main_ctx);
   }
   
-  current = task; 
-  coro_swap(swap, task->coro); 
+  current = task;
+  if (swap) {
+    coro_swap(swap, task->coro); 
+  }
+  else {
+    coro_switch(task->coro);
+  }
 }
 
 static void run_tasks(void) {
@@ -87,8 +91,7 @@ static void coro_main(Coro* self, void* task) {
   free(t->coro);
   free(t);
 
-  Coro waste;
-  schedule(&waste);
+  schedule(NULL);
 }
 
 static void spawn(Fn fn, void* arg) {

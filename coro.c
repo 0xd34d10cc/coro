@@ -61,3 +61,8 @@ NAKED void coro_swap(Coro* current, Coro* next) {
     "ret"
   );
 }
+
+void coro_switch(Coro* coro) {
+  Coro waste;
+  coro_swap(&waste, coro);
+}

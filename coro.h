@@ -24,11 +24,8 @@ typedef void (*CoroFn)(Coro* self, void* arg);
 // initialize coroutine
 void coro_init(Coro* coro, char* stack, int stack_size, CoroFn fn, void* arg);
 
-// switch current context to |coro|
+// switch context to |coro|, current context will be discarded
 void coro_switch(Coro* coro);
-
-// save current context to |coro|
-void coro_save(Coro* coro);
 
 // save current context to |current| and swap to |next| coro
 void coro_swap(Coro* current, Coro* next);
