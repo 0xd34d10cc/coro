@@ -12,7 +12,10 @@ typedef struct Coro {
   Reg r15;
   Reg rip;  
   Reg flag;
-  _Alignas(16) char fxsave[512];
+
+  // TODO: save these control registers, see https://www.uclibc.org/docs/psABI-x86_64.pdf page 21
+  // mxcsr
+  // x87 CW
 } Coro;
 
 typedef void (*CoroFn)(Coro* self, void* arg);

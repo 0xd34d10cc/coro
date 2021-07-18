@@ -11,11 +11,7 @@ __attribute__((naked)) static void trampoline(void) {
 }
 
 void coro_init(Coro* coro, char* stack, int stack_size, CoroFn fn, void* arg) {
-  for (int i = 0; i < sizeof(coro->fxsave); ++i) {
-    coro->fxsave[i] = 0;  
-  }
-
-  // assuming stack is aligned properly
+  // Stack should be aligned by 16, so this is fine 
   *(Reg*)(stack + stack_size - 8) = (Reg)fn;
   *(Reg*)(stack + stack_size - 16) = (Reg)arg;
   *(Reg*)(stack + stack_size - 24) = (Reg)coro;
@@ -48,7 +44,6 @@ void coro_swap(Coro* current, Coro* next) {
     "movq %1, 56(%0);"
     "pushf;"
     "popq 64(%0);"
-    "fxsave 80(%0);"
     :
     : "r" (current), "r" (restore)
     : "rax"
@@ -66,14 +61,14 @@ void coro_swap(Coro* current, Coro* next) {
     "movq 48(%0), %%r15;"
     "push 64(%0);"
     "popfq;"
-    "fxrstor 80(%0);"
     "jmp *56(%0);"
     :
     : "r" (next)
   );
 
   end:
-  // this is a hack to prevent label address from going out of function 
+  // this is a hack to prevent label address from going outside of function 
+  // TODO: make this function naked to avoid this problem
   asm volatile("nop");
   return;
 }
