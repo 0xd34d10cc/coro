@@ -11,15 +11,13 @@ typedef struct Coro {
   Reg r14;
   Reg r15;
   Reg rip;  
-  Reg flag;
 
   // TODO: save these control registers, see https://www.uclibc.org/docs/psABI-x86_64.pdf page 21
   // mxcsr
   // x87 CW
 } Coro;
 
-// TODO: remove |self| parameter
-typedef void (*CoroFn)(Coro* self, void* arg);
+typedef void (*CoroFn)(void* arg);
 
 // initialize coroutine
 void coro_init(Coro* coro, char* stack, int stack_size, CoroFn fn, void* arg);

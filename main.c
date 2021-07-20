@@ -1,113 +1,37 @@
-#include "coro.h"
+#include "scheduler.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef void (*Fn)(void*);
 
-typedef struct Task {
-  char* stack;
-  Coro* coro;
-  Fn fn;
-  void* arg;
+static Scheduler scheduler;
 
-  struct Task* next;
-} Task;
-
-typedef struct TaskQueue {
-  Task* first;
-  Task* last;
-} TaskQueue;
-
-
-static TaskQueue tasks = {
-  .first = NULL,
-  .last = NULL
-};
-
-static Task* current = NULL;
-
-static Task* pop_task(TaskQueue* queue) {
-  Task* task = queue->first;
-  if (!task) {
-    return NULL;
-  }
-
-  Task* last = queue->last;
-  if (task != last) {
-    queue->first = task->next;
-  } else {
-    queue->first = NULL;
-    queue->last = NULL;
-  }
-
-  // just in case
-  task->next = NULL;
+static Task* task_alloc(void* allocator, int* stack_size) {
+  (void)allocator;
+  static const int STACK_SIZE = 16 * 1024;
+  char* stack = malloc(STACK_SIZE);
+  Task* task = malloc(sizeof(Task));
+  task->stack = stack;
+  *stack_size = STACK_SIZE;
   return task;
 }
 
-static void push_task(TaskQueue* queue, Task* task) {
-  if (!queue->first) {
-    queue->first = task;
-    queue->last = task;
-  } else {
-    queue->last->next = task;
-    queue->last = task;
-  }
-}
-
-static Coro main_ctx;
-
-static void schedule(Coro* swap) {
-  Task* task = pop_task(&tasks);
-  if (!task) {
-    coro_switch(&main_ctx);
-  }
-  
-  current = task;
-  if (swap) {
-    coro_swap(swap, task->coro); 
-  }
-  else {
-    coro_switch(task->coro);
-  }
-}
-
-static void run_tasks(void) {
-  schedule(&main_ctx);
+static void task_free(void* allocator, Task* task) {
+  (void)allocator;
+  free(task->stack);
+  free(task);
 }
 
 static void yield(void) {
-  push_task(&tasks, current);
-  schedule(current->coro); 
-}
-
-static void coro_main(Coro* self, void* task) {
-  Task* t = (Task*)task;
-  t->fn(t->arg);
-  
-  current = NULL;
-  free(t->stack);
-  free(t->coro);
-  free(t);
-
-  schedule(NULL);
+  scheduler_yield(&scheduler);
 }
 
 static void spawn(Fn fn, void* arg) {
-  static int STACK_SIZE = 16 * 1024;
-  char* stack = malloc(STACK_SIZE);
-  Coro* coro = malloc(sizeof(Coro));
-  
-  Task* task = malloc(sizeof(Task));
-  task->stack = stack;
-  task->coro = coro;
-  task->fn = fn;
-  task->arg = arg;
-  task->next = NULL; 
- 
-  coro_init(coro, stack, STACK_SIZE, coro_main, task);
-  push_task(&tasks, task);
+  scheduler_spawn(&scheduler, fn, arg);
+}
+
+static void run_tasks(void) {
+  scheduler_run(&scheduler);
 }
 
 static void inner_fn(void* arg) {
@@ -118,13 +42,14 @@ static void inner_fn(void* arg) {
 static void coro_fn(void* arg) {
   int id = (int)arg;
   printf("Hello from coroutine #%d\n", id);
-  spawn(inner_fn, (void*)(id * 2));
+  spawn(inner_fn, (void*)(size_t)(id * 2));
   yield();
   printf("Hello from coroutine #%d, again\n", id);
 }
 
 int main(void) {
-  for (int i = 1; i < 4; ++i) {
+  scheduler_init(&scheduler, NULL, task_alloc, task_free);
+  for (size_t i = 1; i < 4; ++i) {
     spawn(coro_fn, (void*)i);
   }
 
