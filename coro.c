@@ -17,7 +17,7 @@ void coro_init(Coro* coro, char* stack, int stack_size, CoroFn fn, void* arg) {
   *(Reg*)(stack + stack_size - 16) = (Reg)arg;
   
   coro->rbx = 0;
-  coro->rbp = (Reg)stack + stack_size - 16;
+  coro->rbp = (Reg)stack;
   coro->rsp = (Reg)stack + stack_size - 16;
   coro->r12 = 0;
   coro->r13 = 0;
