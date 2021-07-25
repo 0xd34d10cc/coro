@@ -17,7 +17,6 @@ static Task* pop_task(TaskQueue* queue) {
     queue->last = NULL;
   }
 
-  // just in case
   task->next = NULL;
   return task;
 }
@@ -35,6 +34,9 @@ static void push_task(TaskQueue* queue, Task* task) {
 static void schedule(Scheduler* scheduler, Coro* swap) {
   Task* task = pop_task(&scheduler->tasks);
   if (!task) {
+    if (swap == &scheduler->main_ctx) {
+      return;
+    }
     coro_switch(&scheduler->main_ctx);
   }
   
@@ -46,12 +48,12 @@ static void schedule(Scheduler* scheduler, Coro* swap) {
   }
 }
 
-static void coro_main(void* task) {
-  Task* t = (Task*)task;
-  t->fn(t->arg);
+static void coro_main(void* t) {
+  Task* task = t;
+  task->fn(task->arg);
 
-  Scheduler* scheduler = t->scheduler;  
-  scheduler->task_free(scheduler->allocator, t);
+  Scheduler* scheduler = task->scheduler;  
+  scheduler->task_free(scheduler->allocator, task);
   scheduler->current = NULL;
   schedule(scheduler, NULL);
 }
@@ -61,6 +63,7 @@ void scheduler_init(Scheduler* scheduler, void* allocator, TaskAllocFn task_allo
   for (int i = 0; i < sizeof(Scheduler); ++i) {
     p[i] = 0;
   }
+
   scheduler->allocator = allocator;
   scheduler->task_alloc = task_alloc;
   scheduler->task_free = task_free;
@@ -86,4 +89,3 @@ void scheduler_spawn(Scheduler* scheduler, Fn fn, void* arg) {
   coro_init(&task->coro, task->stack, stack_size, coro_main, task);
   push_task(&scheduler->tasks, task);
 }
-

@@ -34,6 +34,11 @@ static void* malloc(size_t n) {
   }
   char* p = memory + allocated;
   allocated += n;
+  // align by 16 for the next allocation
+  size_t align = allocated % 16;
+  if (align) {
+    allocated += 16 - align;
+  }
   return p;
 }
 
@@ -45,7 +50,7 @@ static void puts(const char* s) {
   char buffer[256];
   size_t i = 0;
   while (s[i]) {
-    if (i == 254) {
+    if (i == sizeof(buffer) - 1) {
       break;
     }    
 
@@ -85,9 +90,10 @@ static void task_free(void* allocator, Task* task) {
 static Scheduler scheduler;
 
 static void coro_fn(void* arg) {
-  puts(arg);
-  scheduler_yield(&scheduler);
-  puts(arg);
+  for (int i = 0; i < 3; ++i) {
+    puts(arg);
+    scheduler_yield(&scheduler);
+  } 
 }
 
 int main(void) {

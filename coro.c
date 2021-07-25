@@ -30,8 +30,6 @@ NAKED void coro_swap(Coro* current, Coro* next) {
   asm volatile(
     // save current context
     // NOTE: there is no need to save volatile registers because
-    //       caller of this function (coro_swap) already assumes
-    //       that their values are invalid after the call
     "movq %rbx, 0(%rdi);"
     "movq %rbp, 8(%rdi);"
     "movq %rsp, 16(%rdi);"

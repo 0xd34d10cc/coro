@@ -20,7 +20,7 @@ typedef struct TaskQueue {
   Task* last;
 } TaskQueue;
 
-// Allocate Task struct with initialized stack
+// Allocate task and stack
 typedef Task* (*TaskAllocFn)(void* allocator, int* stack_size);
 // Deallocate task and its stack
 typedef void (*TaskFreeFn)(void* allocator, Task* task);
